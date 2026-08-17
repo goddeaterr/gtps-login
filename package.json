@@ -1,0 +1,10 @@
+{
+  "name": "gtps-login",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GrowID login page for a private Growtopia server. Packs credentials into the client's token format; never validates them - the game server does that.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
+}

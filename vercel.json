@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/player/growid/login/validate", "destination": "/api/validate" },
+    { "source": "/player/growid/checktoken", "destination": "/api/checktoken" },
+    { "source": "/player/login/dashboard", "destination": "/api/dashboard" },
+    { "source": "/(.*)", "destination": "/api/any" }
+  ]
+}
