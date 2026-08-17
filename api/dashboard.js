@@ -36,6 +36,21 @@ export default async function handler(req, res) {
     res.status(200);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
+
+    /*
+        A PLAIN FORM POST - deliberately, and this is the whole trick.
+
+        The Growtopia client does not read this page's JavaScript. It watches
+        where the webview navigates and reads the JSON body it lands on, so the
+        browser itself has to submit the form and come to rest on
+        /player/growid/login/validate.
+
+        An earlier version used XMLHttpRequest and then redirected. The client
+        never saw the response, and the redirect sent the webview at the game
+        server by IP - no SNI, self-signed certificate, rejected handshake, and
+        the game reported it as "error occurred: 404". No JS may intercept this
+        submit.
+    */
     res.end(`<!doctype html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
@@ -49,52 +64,38 @@ border:1px solid #26313d;border-radius:14px}
 h1{margin:0 0 4px;font-size:20px;text-align:center}
 p.sub{margin:0 0 22px;font-size:12px;text-align:center;color:#7f8b99}
 label{display:block;font-size:12px;margin:14px 0 6px;color:#9dabb9}
-input{width:100%;padding:12px;font-size:16px;color:#e8eef5;background:#0f141a;
-border:1px solid #2c3845;border-radius:8px;outline:none}
-input:focus{border-color:#4d8fd6}
-button{width:100%;margin-top:22px;padding:13px;font-size:15px;font-weight:600;
+input[type=text],input[type=password]{width:100%;padding:12px;font-size:16px;color:#e8eef5;
+background:#0f141a;border:1px solid #2c3845;border-radius:8px;outline:none}
+input[type=text]:focus,input[type=password]:focus{border-color:#4d8fd6}
+input[type=submit]{width:100%;margin-top:22px;padding:13px;font-size:15px;font-weight:600;
 color:#fff;background:#3d7ebf;border:0;border-radius:8px;cursor:pointer}
-button:active{background:#336ba3}
-button:disabled{opacity:.6}
-.err{margin-top:14px;padding:10px;font-size:13px;text-align:center;color:#ffb4b4;
-background:#3a1f24;border:1px solid #5c2b33;border-radius:8px;display:none}
+input[type=submit]:active{background:#336ba3}
 .note{margin-top:18px;font-size:11px;line-height:1.5;text-align:center;color:#6b7784}
 </style></head><body>
 <div class="card">
 <h1>GrowID Login</h1>
 <p class="sub">private server</p>
-<form id="f">
+<form method="POST" action="/player/growid/login/validate" accept-charset="UTF-8" autocomplete="off">
 <input type="hidden" name="_token" value="${token}">
 <label for="g">GrowID</label>
-<input id="g" name="growId" autocapitalize="off" autocorrect="off" autocomplete="username" required>
+<input type="text" id="g" name="growId" autocapitalize="off" autocorrect="off" required>
 <label for="p">Password</label>
-<input id="p" name="password" type="password" autocomplete="current-password" required>
-<button type="submit" id="b">Log in</button>
+<input type="password" id="p" name="password" required>
+<input type="submit" value="Log in">
 </form>
-<div class="err" id="e"></div>
 <p class="note">A name that doesn't exist yet is created on first login.<br>
 Use a password you don't use anywhere else.</p>
 </div>
 <script>
-document.getElementById('f').addEventListener('submit',function(ev){
-ev.preventDefault();
-var e=document.getElementById('e'),b=document.getElementById('b');
-e.style.display='none';b.disabled=true;
-var x=new XMLHttpRequest();
-x.open('POST','/player/growid/login/validate',true);
-x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
-x.onload=function(){
-b.disabled=false;
-try{
-var r=JSON.parse(x.responseText);
-if(r.status==='success'){
-if(window.gtLogin)window.gtLogin(r.token);
-location.href='https://127.0.0.1/?token='+encodeURIComponent(r.token);
-}else{e.textContent=r.message||'Login failed.';e.style.display='block';}
-}catch(_){e.textContent='The server sent something unreadable.';e.style.display='block';}
-};
-x.onerror=function(){b.disabled=false;e.textContent='Could not reach the server.';e.style.display='block';};
-x.send(new URLSearchParams(new FormData(this)).toString());
+/* Input filtering only. Nothing here touches the submit - see the note above:
+   the browser must navigate to the action URL for the client to see the token.
+   '&' is excluded because the token is &-delimited and would be cut short. */
+document.getElementById('g').addEventListener('input',function(){
+  this.value=this.value.replace(/[^A-Za-z0-9]/g,'');
 });
-</script></body></html>`);
+document.getElementById('p').addEventListener('input',function(){
+  this.value=this.value.replace(/[^A-Za-z0-9@._!\\-]/g,'');
+});
+</script>
+</body></html>`);
 }
